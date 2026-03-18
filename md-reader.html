@@ -551,7 +551,7 @@
 
 <!-- Font Size Popup -->
 <div class="font-popup" id="fontPopup">
-  <button id="fontMinus">&minus;</button>
+  <button id="fontMinus">−</button>
   <span class="font-size-label" id="fontLabel">18px</span>
   <button id="fontPlus">+</button>
 </div>
@@ -687,11 +687,9 @@ const md = (() => {
       // Unordered list
       if (/^\s*[-*+]\s/.test(line)) {
         const listItems = [];
-        let hasTask = false;
         while (i < len && /^\s*[-*+]\s/.test(lines[i])) {
           const taskMatch = lines[i].match(/^\s*[-*+]\s+\[([ xX])\]\s+(.*)/);
           if (taskMatch) {
-            hasTask = true;
             const checked = taskMatch[1] !== ' ' ? ' checked disabled' : ' disabled';
             listItems.push(`<li><input type="checkbox"${checked}> ${parseInline(taskMatch[2])}</li>`);
           } else {
@@ -699,206 +697,155 @@ const md = (() => {
           }
           i++;
         }
-        const cls = hasTask ? ' class="task-list"' : '';
-        html += `<ul${cls}>\n${listItems.join('\n')}\n</ul>\n`;
+        const isTasks = listItems[0]?.includes('checkbox');
+        html += `<ul${isTasks ? ' class="task-list"' : ''}>${listItems.join('\n')}</ul>\n`;
         continue;
       }
 
       // Ordered list
-      if (/^\s*\d+\.\s/.test(line)) {
+      if (/^\s*\d+[.)]\s/.test(line)) {
         const listItems = [];
-        while (i < len && /^\s*\d+\.\s/.test(lines[i])) {
-          listItems.push(`<li>${parseInline(lines[i].replace(/^\s*\d+\.\s+/, ''))}</li>`);
+        while (i < len && /^\s*\d+[.)]\s/.test(lines[i])) {
+          listItems.push(`<li>${parseInline(lines[i].replace(/^\s*\d+[.)]\s+/, ''))}</li>`);
           i++;
         }
-        html += `<ol>\n${listItems.join('\n')}\n</ol>\n`;
+        html += `<ol>${listItems.join('\n')}</ol>\n`;
         continue;
       }
 
-      // Paragraph — collect contiguous non-blank, non-special lines
+      // Paragraph
       const paraLines = [];
-      while (i < len && lines[i].trim() !== '' &&
-             !lines[i].match(/^(#{1,6}\s|```|~~~|>|\s*[-*+]\s|\s*\d+\.\s|(\*{3,}|-{3,}|_{3,})\s*$)/) &&
-             !(lines[i].includes('|') && i + 1 < len && /^\|?\s*[-:]+[-| :]*$/.test(lines[i + 1]))) {
+      while (i < len && lines[i].trim() !== '' && !lines[i].match(/^(#{1,6}\s|[-*+]\s|\d+[.)]\s|>|```|~~~|\|.*\|.*$|(\*{3,}|-{3,}|_{3,})\s*$)/)) {
         paraLines.push(lines[i]);
         i++;
       }
       if (paraLines.length) {
         html += `<p>${parseInline(paraLines.join(' '))}</p>\n`;
+      } else {
+        i++;
       }
     }
-
     return html;
   }
 
   return { parse };
 })();
 
-// ── DOM Elements ──
-const fileInput = document.getElementById('fileInput');
-const emptyState = document.getElementById('emptyState');
-const contentEl = document.getElementById('content');
-const fileNameEl = document.getElementById('fileName');
-const progressBar = document.getElementById('progressBar');
-const scrollTopBtn = document.getElementById('scrollTop');
-const dropOverlay = document.getElementById('dropOverlay');
-const fontPopup = document.getElementById('fontPopup');
-const fontLabel = document.getElementById('fontLabel');
-const recentFilesEl = document.getElementById('recentFiles');
+// ── App State ──
+const $ = id => document.getElementById(id);
+const fileInput = $('fileInput');
+const content = $('content');
+const emptyState = $('emptyState');
+const fileName = $('fileName');
+const progressBar = $('progressBar');
+const scrollTopBtn = $('scrollTop');
+const dropOverlay = $('dropOverlay');
+const fontPopup = $('fontPopup');
+const fontLabel = $('fontLabel');
 
-// ── State ──
-let fontSize = parseInt(localStorage.getItem('md-font-size')) || 18;
-let darkMode = localStorage.getItem('md-dark') === '1';
+let fontSize = parseInt(localStorage.getItem('md-fontsize') || '18');
+let darkMode = localStorage.getItem('md-dark') === '1' || (localStorage.getItem('md-dark') === null && matchMedia('(prefers-color-scheme:dark)').matches);
 
-// ── Theme ──
+// ── Init ──
+function init() {
+  applyTheme();
+  applyFontSize();
+  renderRecent();
+}
+
 function applyTheme() {
   document.documentElement.classList.toggle('dark', darkMode);
   localStorage.setItem('md-dark', darkMode ? '1' : '0');
 }
-applyTheme();
 
-document.getElementById('btnTheme').addEventListener('click', () => {
-  darkMode = !darkMode;
-  applyTheme();
-});
-
-// ── Font Size ──
 function applyFontSize() {
   document.documentElement.style.fontSize = fontSize + 'px';
   fontLabel.textContent = fontSize + 'px';
-  localStorage.setItem('md-font-size', fontSize);
+  localStorage.setItem('md-fontsize', fontSize);
 }
-applyFontSize();
 
-document.getElementById('btnFont').addEventListener('click', (e) => {
-  e.stopPropagation();
-  fontPopup.classList.toggle('open');
-});
+// ── File handling ──
+function openFile() { fileInput.click(); }
 
-document.getElementById('fontMinus').addEventListener('click', () => {
-  if (fontSize > 12) { fontSize -= 1; applyFontSize(); }
-});
-
-document.getElementById('fontPlus').addEventListener('click', () => {
-  if (fontSize < 28) { fontSize += 1; applyFontSize(); }
-});
-
-document.addEventListener('click', (e) => {
-  if (!fontPopup.contains(e.target) && e.target.id !== 'btnFont') {
-    fontPopup.classList.remove('open');
-  }
-});
-
-// ── File Open ──
-function openFilePicker() { fileInput.click(); }
-
-document.getElementById('btnOpen').addEventListener('click', openFilePicker);
-document.getElementById('btnOpenMain').addEventListener('click', openFilePicker);
-
-fileInput.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (file) loadFile(file);
-});
-
-function loadFile(file) {
+function handleFile(file) {
+  if (!file) return;
   const reader = new FileReader();
-  reader.onload = (e) => {
-    const html = md.parse(e.target.result);
-    contentEl.innerHTML = html;
-    contentEl.style.display = 'block';
+  reader.onload = e => {
+    const text = e.target.result;
+    content.innerHTML = md.parse(text);
+    content.style.display = '';
     emptyState.style.display = 'none';
-    fileNameEl.textContent = file.name;
+    fileName.textContent = file.name;
+    document.title = `${file.name} — md.`;
+    window.scrollTo(0, 0);
     saveRecent(file.name);
-    window.scrollTo({ top: 0 });
   };
   reader.readAsText(file);
 }
 
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+// ── Buttons ──
+$('btnOpenMain').addEventListener('click', openFile);
+$('btnOpen').addEventListener('click', openFile);
+$('btnTheme').addEventListener('click', () => { darkMode = !darkMode; applyTheme(); });
+$('btnFont').addEventListener('click', e => { e.stopPropagation(); fontPopup.classList.toggle('open'); });
+$('fontMinus').addEventListener('click', () => { fontSize = Math.max(12, fontSize - 1); applyFontSize(); });
+$('fontPlus').addEventListener('click', () => { fontSize = Math.min(28, fontSize + 1); applyFontSize(); });
+document.addEventListener('click', e => { if (!fontPopup.contains(e.target) && e.target !== $('btnFont')) fontPopup.classList.remove('open'); });
+
+// ── Scroll progress + scroll-to-top ──
+window.addEventListener('scroll', () => {
+  const scrolled = window.scrollY;
+  const docH = document.documentElement.scrollHeight - window.innerHeight;
+  if (docH > 0 && content.style.display !== 'none') {
+    progressBar.style.width = Math.min(100, (scrolled / docH) * 100) + '%';
+  } else {
+    progressBar.style.width = '0';
+  }
+  scrollTopBtn.classList.toggle('visible', scrolled > 400);
+});
+scrollTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
 // ── Drag & Drop ──
 let dragCounter = 0;
-
-document.addEventListener('dragenter', (e) => {
-  e.preventDefault();
-  dragCounter++;
-  dropOverlay.classList.add('active');
-});
-
-document.addEventListener('dragleave', (e) => {
-  e.preventDefault();
-  dragCounter--;
-  if (dragCounter <= 0) {
-    dragCounter = 0;
-    dropOverlay.classList.remove('active');
-  }
-});
-
-document.addEventListener('dragover', (e) => e.preventDefault());
-
-document.addEventListener('drop', (e) => {
+document.addEventListener('dragenter', e => { e.preventDefault(); dragCounter++; dropOverlay.classList.add('active'); });
+document.addEventListener('dragleave', e => { e.preventDefault(); dragCounter--; if (dragCounter <= 0) { dragCounter = 0; dropOverlay.classList.remove('active'); }});
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
   e.preventDefault();
   dragCounter = 0;
   dropOverlay.classList.remove('active');
   const file = e.dataTransfer.files[0];
-  if (file && /\.(md|markdown|txt|mdx|mdown)$/i.test(file.name)) {
-    loadFile(file);
-  }
+  if (file) handleFile(file);
 });
 
-// ── Scroll to Top & Progress Bar ──
-window.addEventListener('scroll', () => {
-  const scrollY = window.scrollY;
-  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-
-  // Scroll-to-top button
-  scrollTopBtn.classList.toggle('visible', scrollY > 400);
-
-  // Progress bar
-  if (docHeight > 0) {
-    const pct = Math.min((scrollY / docHeight) * 100, 100);
-    progressBar.style.width = pct + '%';
-  }
-}, { passive: true });
-
-scrollTopBtn.addEventListener('click', () => {
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-});
-
-// ── Recent Files (names only, stored in localStorage) ──
+// ── Recent files (names only, stored in localStorage) ──
 function getRecent() {
-  try { return JSON.parse(localStorage.getItem('md-recent') || '[]'); }
-  catch { return []; }
+  try { return JSON.parse(localStorage.getItem('md-recent') || '[]'); } catch { return []; }
 }
-
 function saveRecent(name) {
   let list = getRecent().filter(n => n !== name);
   list.unshift(name);
   list = list.slice(0, 5);
   localStorage.setItem('md-recent', JSON.stringify(list));
-  renderRecent();
 }
-
 function renderRecent() {
   const list = getRecent();
-  if (!list.length) { recentFilesEl.innerHTML = ''; return; }
-  recentFilesEl.innerHTML =
-    `<div class="recent-label">Recently opened</div>` +
-    list.map(name =>
-      `<div class="recent-item" onclick="openFilePicker()">
+  if (!list.length) return;
+  const container = $('recentFiles');
+  container.innerHTML = `<div class="recent-label">Recently opened</div>` +
+    list.map(name => `
+      <div class="recent-item" title="${escapeAttr(name)}">
         <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
-        <span>${name}</span>
-      </div>`
-    ).join('');
+        <span>${escapeHtmlText(name)}</span>
+      </div>
+    `).join('');
 }
+function escapeAttr(s) { return s.replace(/"/g, '&quot;'); }
+function escapeHtmlText(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-renderRecent();
-
-// ── Keyboard Shortcut ──
-document.addEventListener('keydown', (e) => {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
-    e.preventDefault();
-    openFilePicker();
-  }
-});
+init();
 </script>
 </body>
 </html>
