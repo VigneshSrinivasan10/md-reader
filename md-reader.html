@@ -1,318 +1,904 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MD Reader</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<meta name="theme-color" content="#1a1a1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>md.</title>
+<link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoibWQuIiwic2hvcnRfbmFtZSI6Im1kLiIsInN0YXJ0X3VybCI6Ii4iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjMWExYTFhIiwidGhlbWVfY29sb3IiOiIjMWExYTFhIiwiaWNvbnMiOlt7InNyYyI6ImRhdGE6aW1hZ2Uvc3ZnK3htbCw8c3ZnIHhtbG5zPSdodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2Zycgdmlld0JveD0nMCAwIDEwMCAxMDAnPjxyZWN0IHdpZHRoPScxMDAnIGhlaWdodD0nMTAwJyByeD0nMjAnIGZpbGw9JyMxYTFhMWEnLz48dGV4dCB4PSc1MCcgeT0nNjgnIHRleHQtYW5jaG9yPSdtaWRkbGUnIGZpbGw9JyNmNWYwZTgnIGZvbnQtZmFtaWx5PSdzZXJpZicgZm9udC1zaXplPSc0OCcgZm9udC13ZWlnaHQ9JzcwMCc+bWQuPC90ZXh0Pjwvc3ZnPiIsInNpemVzIjoiYW55IiwidHlwZSI6ImltYWdlL3N2Zyt4bWwifV19">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap');
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f6f8fa;
-            color: #24292e;
-            line-height: 1.6;
-        }
+  :root {
+    --bg: #faf8f4;
+    --bg-subtle: #f0ece4;
+    --text: #2c2825;
+    --text-muted: #8a8279;
+    --accent: #c45d3e;
+    --accent-soft: #c45d3e18;
+    --border: #e4dfd7;
+    --code-bg: #292524;
+    --code-text: #e7e5e4;
+    --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+    --radius: 8px;
+  }
 
-        header {
-            background-color: #24292e;
-            color: white;
-            padding: 16px 24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+  .dark {
+    --bg: #1a1816;
+    --bg-subtle: #242120;
+    --text: #e8e2d9;
+    --text-muted: #847c73;
+    --accent: #e8845a;
+    --accent-soft: #e8845a18;
+    --border: #33302c;
+    --code-bg: #131211;
+    --code-text: #d6d3d1;
+    --shadow: 0 1px 3px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.15);
+  }
 
-        header h1 {
-            font-size: 20px;
-            font-weight: 600;
-        }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        .upload-btn {
-            background-color: #2ea44f;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: 500;
-        }
+  html {
+    font-size: 18px;
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
 
-        .upload-btn:hover {
-            background-color: #2c974b;
-        }
+  body {
+    font-family: 'Newsreader', Georgia, serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    min-height: 100dvh;
+    transition: background 0.4s ease, color 0.3s ease;
+    -webkit-font-smoothing: antialiased;
+  }
 
-        .container {
-            max-width: 900px;
-            margin: 32px auto;
-            padding: 0 24px;
-        }
+  /* ── Top Bar ── */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: color-mix(in srgb, var(--bg) 85%, transparent);
+    transition: border-color 0.3s, background 0.3s;
+  }
 
-        .drop-zone {
-            border: 2px dashed #d0d7de;
-            border-radius: 12px;
-            padding: 60px 24px;
-            text-align: center;
-            background-color: #ffffff;
-            cursor: pointer;
-            transition: border-color 0.2s, background-color 0.2s;
-        }
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
 
-        .drop-zone.dragover {
-            border-color: #2ea44f;
-            background-color: #f0fff4;
-        }
+  .logo {
+    font-family: 'Newsreader', serif;
+    font-weight: 600;
+    font-size: 1.3rem;
+    color: var(--accent);
+    letter-spacing: -0.02em;
+    flex-shrink: 0;
+  }
 
-        .drop-zone p {
-            font-size: 16px;
-            color: #57606a;
-            margin-top: 8px;
-        }
+  .filename {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 45vw;
+  }
 
-        .drop-zone .icon {
-            font-size: 48px;
-            color: #d0d7de;
-        }
+  .topbar-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
 
-        #file-input {
-            display: none;
-        }
+  .btn-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn-icon:hover, .btn-icon:active {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .btn-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 1.8;
+  }
 
-        .markdown-body {
-            background-color: #ffffff;
-            border: 1px solid #d0d7de;
-            border-radius: 12px;
-            padding: 32px 40px;
-            font-size: 16px;
-            line-height: 1.8;
-            display: none;
-        }
+  /* ── Empty State ── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100dvh - 64px);
+    padding: 40px 24px;
+    text-align: center;
+    animation: fadeUp 0.6s ease-out;
+  }
 
-        .markdown-body h1,
-        .markdown-body h2,
-        .markdown-body h3,
-        .markdown-body h4,
-        .markdown-body h5,
-        .markdown-body h6 {
-            margin-top: 24px;
-            margin-bottom: 16px;
-            font-weight: 600;
-            line-height: 1.25;
-            border-bottom: 1px solid #eaecef;
-            padding-bottom: 0.3em;
-        }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 
-        .markdown-body h1 { font-size: 2em; }
-        .markdown-body h2 { font-size: 1.5em; }
-        .markdown-body h3 { font-size: 1.25em; border-bottom: none; }
-        .markdown-body h4 { font-size: 1em; border-bottom: none; }
+  .empty-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    background: var(--accent-soft);
+    display: grid;
+    place-items: center;
+    margin-bottom: 24px;
+  }
+  .empty-icon svg {
+    width: 32px;
+    height: 32px;
+    color: var(--accent);
+    stroke-width: 1.5;
+  }
 
-        .markdown-body p {
-            margin-bottom: 16px;
-        }
+  .empty-state h2 {
+    font-family: 'Newsreader', serif;
+    font-weight: 600;
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
 
-        .markdown-body code {
-            background-color: #f0f3f6;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-            font-size: 85%;
-        }
+  .empty-state p {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.83rem;
+    color: var(--text-muted);
+    max-width: 280px;
+    line-height: 1.6;
+    margin-bottom: 28px;
+  }
 
-        .markdown-body pre {
-            background-color: #f6f8fa;
-            border: 1px solid #d0d7de;
-            border-radius: 6px;
-            padding: 16px;
-            overflow-x: auto;
-            margin-bottom: 16px;
-        }
+  .btn-open {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.83rem;
+    padding: 14px 32px;
+    border: none;
+    border-radius: 50px;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: transform 0.2s, box-shadow 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 2px 12px rgba(196, 93, 62, 0.25);
+  }
+  .btn-open:active {
+    transform: scale(0.97);
+  }
 
-        .markdown-body pre code {
-            background: none;
-            padding: 0;
-            font-size: 85%;
-        }
+  .hint {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 16px;
+    opacity: 0.7;
+  }
 
-        .markdown-body blockquote {
-            border-left: 4px solid #d0d7de;
-            padding: 0 16px;
-            color: #57606a;
-            margin-bottom: 16px;
-        }
+  /* ── Markdown Content ── */
+  .content {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 36px 24px 100px;
+    animation: fadeUp 0.4s ease-out;
+  }
 
-        .markdown-body ul,
-        .markdown-body ol {
-            padding-left: 2em;
-            margin-bottom: 16px;
-        }
+  .content h1, .content h2, .content h3,
+  .content h4, .content h5, .content h6 {
+    font-family: 'Newsreader', serif;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+    margin-top: 2em;
+    margin-bottom: 0.6em;
+    color: var(--text);
+  }
 
-        .markdown-body li {
-            margin-bottom: 4px;
-        }
+  .content h1 {
+    font-size: 2rem;
+    margin-top: 0;
+    padding-bottom: 0.4em;
+    border-bottom: 2px solid var(--border);
+  }
 
-        .markdown-body a {
-            color: #0969da;
-            text-decoration: none;
-        }
+  .content h2 {
+    font-size: 1.5rem;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--border);
+  }
 
-        .markdown-body a:hover {
-            text-decoration: underline;
-        }
+  .content h3 { font-size: 1.2rem; }
+  .content h4 { font-size: 1rem; }
 
-        .markdown-body img {
-            max-width: 100%;
-            border-radius: 6px;
-        }
+  .content p {
+    margin-bottom: 1.2em;
+  }
 
-        .markdown-body table {
-            border-collapse: collapse;
-            width: 100%;
-            margin-bottom: 16px;
-        }
+  .content a {
+    color: var(--accent);
+    text-decoration-color: var(--accent);
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+    transition: opacity 0.2s;
+  }
+  .content a:hover { opacity: 0.75; }
 
-        .markdown-body th,
-        .markdown-body td {
-            border: 1px solid #d0d7de;
-            padding: 8px 12px;
-            text-align: left;
-        }
+  .content strong { font-weight: 600; }
 
-        .markdown-body th {
-            background-color: #f6f8fa;
-            font-weight: 600;
-        }
+  .content em { font-style: italic; }
 
-        .markdown-body hr {
-            border: none;
-            border-top: 2px solid #d0d7de;
-            margin: 24px 0;
-        }
+  .content blockquote {
+    border-left: 3px solid var(--accent);
+    padding: 0.6em 1.2em;
+    margin: 1.4em 0;
+    background: var(--accent-soft);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+  .content blockquote p:last-child { margin-bottom: 0; }
 
-        .file-name {
-            font-size: 14px;
-            color: #57606a;
-            margin-bottom: 16px;
-            display: none;
-        }
-    </style>
+  .content code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82em;
+    background: var(--bg-subtle);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+    word-break: break-word;
+  }
+
+  .content pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 20px;
+    border-radius: var(--radius);
+    overflow-x: auto;
+    margin: 1.4em 0;
+    box-shadow: var(--shadow);
+    position: relative;
+  }
+  .content pre code {
+    background: none;
+    padding: 0;
+    font-size: 0.78rem;
+    line-height: 1.65;
+    color: inherit;
+  }
+
+  .content pre .lang-tag {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: #78716c;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    user-select: none;
+  }
+
+  .content ul, .content ol {
+    padding-left: 1.5em;
+    margin-bottom: 1.2em;
+  }
+
+  .content li {
+    margin-bottom: 0.35em;
+  }
+  .content li::marker {
+    color: var(--accent);
+  }
+
+  .content hr {
+    border: none;
+    height: 1px;
+    background: var(--border);
+    margin: 2.4em 0;
+  }
+
+  .content img {
+    max-width: 100%;
+    border-radius: var(--radius);
+    margin: 1em 0;
+  }
+
+  .content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.4em 0;
+    font-size: 0.88rem;
+    overflow-x: auto;
+    display: block;
+  }
+  .content th, .content td {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .content th {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+
+  /* Task lists */
+  .content .task-list {
+    list-style: none;
+    padding-left: 0;
+  }
+  .content .task-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .content .task-list input[type="checkbox"] {
+    margin-top: 6px;
+    accent-color: var(--accent);
+  }
+
+  /* ── Scroll-to-top ── */
+  .scroll-top {
+    position: fixed;
+    bottom: 24px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-muted);
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 50;
+  }
+  .scroll-top.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .scroll-top svg { width: 18px; height: 18px; }
+
+  /* ── Reading progress ── */
+  .progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    background: var(--accent);
+    z-index: 200;
+    transition: width 0.1s linear;
+    border-radius: 0 1px 1px 0;
+  }
+
+  /* ── Font size popup ── */
+  .font-popup {
+    position: fixed;
+    top: 60px;
+    right: 16px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    z-index: 150;
+    display: none;
+    align-items: center;
+    gap: 14px;
+    animation: fadeUp 0.2s ease-out;
+  }
+  .font-popup.open { display: flex; }
+
+  .font-popup button {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: all 0.15s;
+  }
+  .font-popup button:active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .font-size-label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    min-width: 36px;
+    text-align: center;
+  }
+
+  /* ── Recent files ── */
+  .recent-files {
+    margin-top: 32px;
+    width: 100%;
+    max-width: 300px;
+  }
+  .recent-label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .recent-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .recent-item:active { background: var(--accent-soft); }
+  .recent-item svg { width: 16px; height: 16px; color: var(--text-muted); flex-shrink: 0; }
+  .recent-item span {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.8rem;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Drag & Drop ── */
+  .drop-overlay {
+    position: fixed;
+    inset: 0;
+    background: color-mix(in srgb, var(--bg) 90%, transparent);
+    backdrop-filter: blur(8px);
+    z-index: 500;
+    display: none;
+    place-items: center;
+  }
+  .drop-overlay.active { display: grid; }
+  .drop-overlay-inner {
+    border: 2px dashed var(--accent);
+    border-radius: 20px;
+    padding: 60px;
+    text-align: center;
+  }
+  .drop-overlay-inner p {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--accent);
+    margin-top: 12px;
+  }
+  .drop-overlay svg { width: 40px; height: 40px; color: var(--accent); }
+</style>
 </head>
 <body>
-    <header>
-        <h1>MD Reader</h1>
-        <button class="upload-btn" onclick="document.getElementById('file-input').click()">Open File</button>
-    </header>
 
-    <div class="container">
-        <input type="file" id="file-input" accept=".md,.markdown,.txt">
+<!-- Progress Bar -->
+<div class="progress-bar" id="progressBar"></div>
 
-        <div class="drop-zone" id="drop-zone">
-            <div class="icon">&#128196;</div>
-            <p>Drop a Markdown file here or click to open</p>
-        </div>
+<!-- Top Bar -->
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="logo">md.</span>
+    <span class="filename" id="fileName"></span>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn-icon" id="btnFont" title="Font size" aria-label="Font size">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7V5h14v2M7 5v14M10 19H4M15 13v-2h8v2M19 11v8M21 19h-4"/></svg>
+    </button>
+    <button class="btn-icon" id="btnTheme" title="Toggle theme" aria-label="Toggle theme">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.72 9.72 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z"/></svg>
+    </button>
+    <button class="btn-icon" id="btnOpen" title="Open file" aria-label="Open file">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776"/></svg>
+    </button>
+  </div>
+</div>
 
-        <div class="file-name" id="file-name"></div>
-        <div class="markdown-body" id="output"></div>
-    </div>
+<!-- Font Size Popup -->
+<div class="font-popup" id="fontPopup">
+  <button id="fontMinus">&minus;</button>
+  <span class="font-size-label" id="fontLabel">18px</span>
+  <button id="fontPlus">+</button>
+</div>
 
-    <script>
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-input');
-        const output = document.getElementById('output');
-        const fileNameEl = document.getElementById('file-name');
+<!-- Empty State -->
+<div class="empty-state" id="emptyState">
+  <div class="empty-icon">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+  </div>
+  <h2>Open a Markdown file</h2>
+  <p>Tap to browse for a <strong>.md</strong> file, or drag and drop one onto this page.</p>
+  <button class="btn-open" id="btnOpenMain">Open File</button>
+  <span class="hint">Supports .md and .txt files</span>
+  <div class="recent-files" id="recentFiles"></div>
+</div>
 
-        dropZone.addEventListener('click', () => fileInput.click());
+<!-- Rendered Content -->
+<article class="content" id="content" style="display:none;"></article>
 
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
-        });
+<!-- Scroll to Top -->
+<button class="scroll-top" id="scrollTop" aria-label="Scroll to top">
+  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.5 15.75l7.5-7.5 7.5 7.5"/></svg>
+</button>
 
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('dragover');
-        });
+<!-- Drop Overlay -->
+<div class="drop-overlay" id="dropOverlay">
+  <div class="drop-overlay-inner">
+    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+    <p>Drop your markdown file</p>
+  </div>
+</div>
 
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) readFile(file);
-        });
+<!-- Hidden file input -->
+<input type="file" id="fileInput" accept=".md,.markdown,.txt,.mdx,.mdown" style="display:none">
 
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) readFile(file);
-        });
+<script>
+// ── Markdown Parser ──
+const md = (() => {
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
 
-        function readFile(file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const md = e.target.result;
-                output.innerHTML = parseMarkdown(md);
-                output.style.display = 'block';
-                dropZone.style.display = 'none';
-                fileNameEl.textContent = file.name;
-                fileNameEl.style.display = 'block';
-            };
-            reader.readAsText(file);
+  function parseInline(text) {
+    // Images
+    text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" loading="lazy">');
+    // Links
+    text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    // Bold+italic
+    text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+    text = text.replace(/___(.+?)___/g, '<strong><em>$1</em></strong>');
+    // Bold
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    // Italic
+    text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    text = text.replace(/_(.+?)_/g, '<em>$1</em>');
+    // Strikethrough
+    text = text.replace(/~~(.+?)~~/g, '<del>$1</del>');
+    // Inline code
+    text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+    return text;
+  }
+
+  function parse(src) {
+    const lines = src.replace(/\r\n/g, '\n').split('\n');
+    let html = '';
+    let i = 0;
+    const len = lines.length;
+
+    while (i < len) {
+      const line = lines[i];
+
+      // Blank line
+      if (line.trim() === '') { i++; continue; }
+
+      // Fenced code block
+      const fenceMatch = line.match(/^(`{3,}|~{3,})\s*([\w+-]*)/);
+      if (fenceMatch) {
+        const fence = fenceMatch[1][0];
+        const lang = fenceMatch[2];
+        const codeLines = [];
+        i++;
+        while (i < len && !lines[i].startsWith(fence.repeat(fenceMatch[1].length))) {
+          codeLines.push(lines[i]);
+          i++;
         }
+        i++; // skip closing fence
+        const langTag = lang ? `<span class="lang-tag">${escapeHtml(lang)}</span>` : '';
+        html += `<pre>${langTag}<code>${escapeHtml(codeLines.join('\n'))}</code></pre>\n`;
+        continue;
+      }
 
-        function parseMarkdown(text) {
-            let html = text;
+      // Headings
+      const headingMatch = line.match(/^(#{1,6})\s+(.+)/);
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        html += `<h${level}>${parseInline(headingMatch[2])}</h${level}>\n`;
+        i++; continue;
+      }
 
-            // Escape HTML
-            html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      // Horizontal rule
+      if (/^(\*{3,}|-{3,}|_{3,})\s*$/.test(line.trim())) {
+        html += '<hr>\n';
+        i++; continue;
+      }
 
-            // Code blocks (fenced)
-            html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-                return '<pre><code>' + code.trim() + '</code></pre>';
-            });
-
-            // Inline code
-            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-            // Headings
-            html = html.replace(/^######\s+(.+)$/gm, '<h6>$1</h6>');
-            html = html.replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>');
-            html = html.replace(/^####\s+(.+)$/gm, '<h4>$1</h4>');
-            html = html.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
-            html = html.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
-            html = html.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
-
-            // Horizontal rules
-            html = html.replace(/^---+$/gm, '<hr>');
-
-            // Bold and italic
-            html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-
-            // Images
-            html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
-
-            // Links
-            html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-
-            // Blockquotes
-            html = html.replace(/^&gt;\s+(.+)$/gm, '<blockquote><p>$1</p></blockquote>');
-
-            // Unordered lists
-            html = html.replace(/^[\*\-]\s+(.+)$/gm, '<li>$1</li>');
-            html = html.replace(/((<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
-
-            // Paragraphs
-            html = html.replace(/^(?!<[a-z])(.*\S.*)$/gm, '<p>$1</p>');
-
-            // Clean up empty paragraphs
-            html = html.replace(/<p><\/p>/g, '');
-
-            return html;
+      // Blockquote
+      if (line.trimStart().startsWith('>')) {
+        const quoteLines = [];
+        while (i < len && (lines[i].trimStart().startsWith('>') || (lines[i].trim() !== '' && quoteLines.length > 0 && !lines[i].match(/^#{1,6}\s/)))) {
+          quoteLines.push(lines[i].replace(/^>\s?/, ''));
+          i++;
         }
-    </script>
+        html += `<blockquote>${parse(quoteLines.join('\n'))}</blockquote>\n`;
+        continue;
+      }
+
+      // Table
+      if (line.includes('|') && i + 1 < len && /^\|?\s*[-:]+[-| :]*$/.test(lines[i + 1])) {
+        const parseRow = r => r.replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+        const headers = parseRow(line);
+        i += 2; // skip header + separator
+        let rows = '';
+        while (i < len && lines[i].includes('|') && lines[i].trim() !== '') {
+          const cells = parseRow(lines[i]);
+          rows += '<tr>' + cells.map(c => `<td>${parseInline(c)}</td>`).join('') + '</tr>\n';
+          i++;
+        }
+        html += `<table><thead><tr>${headers.map(h => `<th>${parseInline(h)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>\n`;
+        continue;
+      }
+
+      // Unordered list
+      if (/^\s*[-*+]\s/.test(line)) {
+        const listItems = [];
+        let hasTask = false;
+        while (i < len && /^\s*[-*+]\s/.test(lines[i])) {
+          const taskMatch = lines[i].match(/^\s*[-*+]\s+\[([ xX])\]\s+(.*)/);
+          if (taskMatch) {
+            hasTask = true;
+            const checked = taskMatch[1] !== ' ' ? ' checked disabled' : ' disabled';
+            listItems.push(`<li><input type="checkbox"${checked}> ${parseInline(taskMatch[2])}</li>`);
+          } else {
+            listItems.push(`<li>${parseInline(lines[i].replace(/^\s*[-*+]\s+/, ''))}</li>`);
+          }
+          i++;
+        }
+        const cls = hasTask ? ' class="task-list"' : '';
+        html += `<ul${cls}>\n${listItems.join('\n')}\n</ul>\n`;
+        continue;
+      }
+
+      // Ordered list
+      if (/^\s*\d+\.\s/.test(line)) {
+        const listItems = [];
+        while (i < len && /^\s*\d+\.\s/.test(lines[i])) {
+          listItems.push(`<li>${parseInline(lines[i].replace(/^\s*\d+\.\s+/, ''))}</li>`);
+          i++;
+        }
+        html += `<ol>\n${listItems.join('\n')}\n</ol>\n`;
+        continue;
+      }
+
+      // Paragraph — collect contiguous non-blank, non-special lines
+      const paraLines = [];
+      while (i < len && lines[i].trim() !== '' &&
+             !lines[i].match(/^(#{1,6}\s|```|~~~|>|\s*[-*+]\s|\s*\d+\.\s|(\*{3,}|-{3,}|_{3,})\s*$)/) &&
+             !(lines[i].includes('|') && i + 1 < len && /^\|?\s*[-:]+[-| :]*$/.test(lines[i + 1]))) {
+        paraLines.push(lines[i]);
+        i++;
+      }
+      if (paraLines.length) {
+        html += `<p>${parseInline(paraLines.join(' '))}</p>\n`;
+      }
+    }
+
+    return html;
+  }
+
+  return { parse };
+})();
+
+// ── DOM Elements ──
+const fileInput = document.getElementById('fileInput');
+const emptyState = document.getElementById('emptyState');
+const contentEl = document.getElementById('content');
+const fileNameEl = document.getElementById('fileName');
+const progressBar = document.getElementById('progressBar');
+const scrollTopBtn = document.getElementById('scrollTop');
+const dropOverlay = document.getElementById('dropOverlay');
+const fontPopup = document.getElementById('fontPopup');
+const fontLabel = document.getElementById('fontLabel');
+const recentFilesEl = document.getElementById('recentFiles');
+
+// ── State ──
+let fontSize = parseInt(localStorage.getItem('md-font-size')) || 18;
+let darkMode = localStorage.getItem('md-dark') === '1';
+
+// ── Theme ──
+function applyTheme() {
+  document.documentElement.classList.toggle('dark', darkMode);
+  localStorage.setItem('md-dark', darkMode ? '1' : '0');
+}
+applyTheme();
+
+document.getElementById('btnTheme').addEventListener('click', () => {
+  darkMode = !darkMode;
+  applyTheme();
+});
+
+// ── Font Size ──
+function applyFontSize() {
+  document.documentElement.style.fontSize = fontSize + 'px';
+  fontLabel.textContent = fontSize + 'px';
+  localStorage.setItem('md-font-size', fontSize);
+}
+applyFontSize();
+
+document.getElementById('btnFont').addEventListener('click', (e) => {
+  e.stopPropagation();
+  fontPopup.classList.toggle('open');
+});
+
+document.getElementById('fontMinus').addEventListener('click', () => {
+  if (fontSize > 12) { fontSize -= 1; applyFontSize(); }
+});
+
+document.getElementById('fontPlus').addEventListener('click', () => {
+  if (fontSize < 28) { fontSize += 1; applyFontSize(); }
+});
+
+document.addEventListener('click', (e) => {
+  if (!fontPopup.contains(e.target) && e.target.id !== 'btnFont') {
+    fontPopup.classList.remove('open');
+  }
+});
+
+// ── File Open ──
+function openFilePicker() { fileInput.click(); }
+
+document.getElementById('btnOpen').addEventListener('click', openFilePicker);
+document.getElementById('btnOpenMain').addEventListener('click', openFilePicker);
+
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) loadFile(file);
+});
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const html = md.parse(e.target.result);
+    contentEl.innerHTML = html;
+    contentEl.style.display = 'block';
+    emptyState.style.display = 'none';
+    fileNameEl.textContent = file.name;
+    saveRecent(file.name);
+    window.scrollTo({ top: 0 });
+  };
+  reader.readAsText(file);
+}
+
+// ── Drag & Drop ──
+let dragCounter = 0;
+
+document.addEventListener('dragenter', (e) => {
+  e.preventDefault();
+  dragCounter++;
+  dropOverlay.classList.add('active');
+});
+
+document.addEventListener('dragleave', (e) => {
+  e.preventDefault();
+  dragCounter--;
+  if (dragCounter <= 0) {
+    dragCounter = 0;
+    dropOverlay.classList.remove('active');
+  }
+});
+
+document.addEventListener('dragover', (e) => e.preventDefault());
+
+document.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dragCounter = 0;
+  dropOverlay.classList.remove('active');
+  const file = e.dataTransfer.files[0];
+  if (file && /\.(md|markdown|txt|mdx|mdown)$/i.test(file.name)) {
+    loadFile(file);
+  }
+});
+
+// ── Scroll to Top & Progress Bar ──
+window.addEventListener('scroll', () => {
+  const scrollY = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+
+  // Scroll-to-top button
+  scrollTopBtn.classList.toggle('visible', scrollY > 400);
+
+  // Progress bar
+  if (docHeight > 0) {
+    const pct = Math.min((scrollY / docHeight) * 100, 100);
+    progressBar.style.width = pct + '%';
+  }
+}, { passive: true });
+
+scrollTopBtn.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// ── Recent Files (names only, stored in localStorage) ──
+function getRecent() {
+  try { return JSON.parse(localStorage.getItem('md-recent') || '[]'); }
+  catch { return []; }
+}
+
+function saveRecent(name) {
+  let list = getRecent().filter(n => n !== name);
+  list.unshift(name);
+  list = list.slice(0, 5);
+  localStorage.setItem('md-recent', JSON.stringify(list));
+  renderRecent();
+}
+
+function renderRecent() {
+  const list = getRecent();
+  if (!list.length) { recentFilesEl.innerHTML = ''; return; }
+  recentFilesEl.innerHTML =
+    `<div class="recent-label">Recently opened</div>` +
+    list.map(name =>
+      `<div class="recent-item" onclick="openFilePicker()">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+        <span>${name}</span>
+      </div>`
+    ).join('');
+}
+
+renderRecent();
+
+// ── Keyboard Shortcut ──
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'o') {
+    e.preventDefault();
+    openFilePicker();
+  }
+});
+</script>
 </body>
 </html>
