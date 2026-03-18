@@ -523,6 +523,89 @@
     margin-top: 12px;
   }
   .drop-overlay svg { width: 40px; height: 40px; color: var(--accent); }
+
+  /* ── Editor ── */
+  .editor-wrap {
+    display: none;
+    height: calc(100dvh - 64px);
+  }
+  .editor-wrap.active {
+    display: flex;
+  }
+
+  .editor-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .pane-label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-subtle);
+    flex-shrink: 0;
+  }
+
+  .editor-textarea {
+    flex: 1;
+    width: 100%;
+    padding: 20px;
+    border: none;
+    outline: none;
+    resize: none;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.7;
+    tab-size: 2;
+  }
+
+  .editor-divider {
+    width: 1px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .preview-pane {
+    flex: 1;
+    overflow-y: auto;
+    min-width: 0;
+  }
+
+  .preview-pane .content {
+    display: block;
+    padding: 20px 24px 60px;
+    margin: 0 auto;
+    max-width: 100%;
+    animation: none;
+  }
+
+  .btn-icon.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  @media (max-width: 640px) {
+    .editor-wrap.active {
+      flex-direction: column;
+    }
+    .editor-divider {
+      width: auto;
+      height: 1px;
+    }
+    .editor-pane, .preview-pane {
+      flex: 1;
+      min-height: 0;
+    }
+  }
 </style>
 </head>
 <body>
@@ -537,6 +620,12 @@
     <span class="filename" id="fileName"></span>
   </div>
   <div class="topbar-actions">
+    <button class="btn-icon" id="btnEdit" title="Edit mode" aria-label="Edit mode">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"/></svg>
+    </button>
+    <button class="btn-icon" id="btnDownload" title="Download markdown" aria-label="Download markdown" style="display:none;">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+    </button>
     <button class="btn-icon" id="btnFont" title="Font size" aria-label="Font size">
       <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7V5h14v2M7 5v14M10 19H4M15 13v-2h8v2M19 11v8M21 19h-4"/></svg>
     </button>
@@ -570,6 +659,19 @@
 
 <!-- Rendered Content -->
 <article class="content" id="content" style="display:none;"></article>
+
+<!-- Editor -->
+<div class="editor-wrap" id="editorWrap">
+  <div class="editor-pane">
+    <div class="pane-label">Markdown</div>
+    <textarea class="editor-textarea" id="editorTextarea" spellcheck="false" placeholder="Type your markdown here..."></textarea>
+  </div>
+  <div class="editor-divider"></div>
+  <div class="preview-pane">
+    <div class="pane-label">Preview</div>
+    <article class="content" id="editorPreview"></article>
+  </div>
+</div>
 
 <!-- Scroll to Top -->
 <button class="scroll-top" id="scrollTop" aria-label="Scroll to top">
@@ -742,6 +844,11 @@ const scrollTopBtn = $('scrollTop');
 const dropOverlay = $('dropOverlay');
 const fontPopup = $('fontPopup');
 const fontLabel = $('fontLabel');
+const editorWrap = $('editorWrap');
+const editorTextarea = $('editorTextarea');
+const editorPreview = $('editorPreview');
+const btnEdit = $('btnEdit');
+const btnDownload = $('btnDownload');
 
 let fontSize = parseInt(localStorage.getItem('md-fontsize') || '18');
 let darkMode = localStorage.getItem('md-dark') === '1' || (localStorage.getItem('md-dark') === null && matchMedia('(prefers-color-scheme:dark)').matches);
@@ -771,14 +878,19 @@ function handleFile(file) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    const text = e.target.result;
-    content.innerHTML = md.parse(text);
+    currentMarkdown = e.target.result;
+    content.innerHTML = md.parse(currentMarkdown);
     content.style.display = '';
     emptyState.style.display = 'none';
     fileName.textContent = file.name;
     document.title = `${file.name} — md.`;
     window.scrollTo(0, 0);
     saveRecent(file.name);
+    // If editor is open, update it
+    if (editMode) {
+      editorTextarea.value = currentMarkdown;
+      updateEditorPreview();
+    }
   };
   reader.readAsText(file);
 }
@@ -844,6 +956,71 @@ function renderRecent() {
 }
 function escapeAttr(s) { return s.replace(/"/g, '&quot;'); }
 function escapeHtmlText(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Editor Mode ──
+let editMode = false;
+let currentMarkdown = '';
+
+function toggleEditMode() {
+  editMode = !editMode;
+  btnEdit.classList.toggle('active', editMode);
+  btnDownload.style.display = editMode ? '' : 'none';
+
+  if (editMode) {
+    emptyState.style.display = 'none';
+    content.style.display = 'none';
+    editorWrap.classList.add('active');
+    editorTextarea.value = currentMarkdown;
+    updateEditorPreview();
+    editorTextarea.focus();
+  } else {
+    editorWrap.classList.remove('active');
+    if (currentMarkdown.trim()) {
+      content.innerHTML = md.parse(currentMarkdown);
+      content.style.display = '';
+    } else {
+      emptyState.style.display = '';
+    }
+  }
+}
+
+function updateEditorPreview() {
+  currentMarkdown = editorTextarea.value;
+  editorPreview.innerHTML = md.parse(currentMarkdown);
+}
+
+let previewTimer;
+editorTextarea.addEventListener('input', () => {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(updateEditorPreview, 80);
+});
+
+// Tab key inserts spaces in editor
+editorTextarea.addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const start = editorTextarea.selectionStart;
+    const end = editorTextarea.selectionEnd;
+    editorTextarea.value = editorTextarea.value.substring(0, start) + '  ' + editorTextarea.value.substring(end);
+    editorTextarea.selectionStart = editorTextarea.selectionEnd = start + 2;
+    updateEditorPreview();
+  }
+});
+
+btnEdit.addEventListener('click', toggleEditMode);
+
+// ── Download ──
+btnDownload.addEventListener('click', () => {
+  const text = editorTextarea.value;
+  if (!text.trim()) return;
+  const blob = new Blob([text], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName.textContent || 'untitled.md';
+  a.click();
+  URL.revokeObjectURL(url);
+});
 
 init();
 </script>
